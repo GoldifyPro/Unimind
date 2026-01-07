@@ -2,9 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import FeatureCard from '../FeatureCard/FeatureCard';
 import './LandingPage.css';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
-const LandingPage = ({ language, setLanguage }) => {
+const LandingPage = () => {
   const navigate = useNavigate();
+  const { language, setLanguage } = useLanguage();
   
   // Content based on language
   const content = {

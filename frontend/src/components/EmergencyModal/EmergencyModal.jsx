@@ -1,7 +1,9 @@
 import React from 'react';
 import './EmergencyModal.css';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
-const EmergencyModal = ({ language, onEmergencyCall, onClose }) => {
+const EmergencyModal = ({ onEmergencyCall, onClose }) => {
+  const { language } = useLanguage();
   return (
     <div className="emergency-modal-overlay">
       <div className="emergency-modal">

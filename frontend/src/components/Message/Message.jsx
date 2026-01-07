@@ -1,7 +1,9 @@
 import React from 'react';
 import './Message.css';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
-const Message = ({ message, language }) => {
+const Message = ({ message }) => {
+  const { language } = useLanguage();
   const isUser = message.sender === 'user';
   
   return (

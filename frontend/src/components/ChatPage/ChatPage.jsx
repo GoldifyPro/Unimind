@@ -1,164 +1,42 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import Navbar from '../Navbar/Navbar.jsx';
 import Message from '../Message/Message.jsx';
 import EmergencyModal from '../EmergencyModal/EmergencyModal.jsx';
 import './ChatPage.css';
+import { useChat } from '../../hooks/useChat.js';
 
-const ChatPage = ({ language, setLanguage }) => {
-  const navigate = useNavigate();
-  const messagesEndRef = useRef(null);
-  const [messages, setMessages] = useState([]);
-  const [inputText, setInputText] = useState('');
-  const [isThinking, setIsThinking] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [responseType, setResponseType] = useState('text'); // 'text' or 'voice'
-  const [emergencyModal, setEmergencyModal] = useState(false);
-
-  // Initial greeting based on language
-  useEffect(() => {
-    const greeting = language === 'english' 
-      ? "Hello! I'm Unimind, your AI mental health companion. How are you feeling today?"
-      : "Habari! Mimi ni Unimind, mshirika wako wa afya ya akili. Unajisikiaje leo?";
-    
-    setMessages([
-      {
-        id: 1,
-        text: greeting,
-        sender: 'bot',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-    ]);
-  }, [language]);
-
-  // Scroll to bottom when new message is added
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return;
-
-    const userMessage = {
-      id: messages.length + 1,
-      text: inputText,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsThinking(true);
-
-    // Simulate AI thinking and response
-    setTimeout(() => {
-      setIsThinking(false);
-      
-      // Sample responses based on language
-      let botResponse;
-      if (language === 'english') {
-        botResponse = "Thank you for sharing that with me. It takes courage to open up about your feelings. Let's explore this together. Can you tell me more about what's been on your mind recently?";
-      } else {
-        botResponse = "Asante kwa kunishirikisha hilo. Inahitaji ujasiri kufungua juu ya hisia zako. Hebu tuchunguze hili pamoja. Unaweza kuniambia zaidi juu ya kile kilichokuwa kichwani mwako hivi karibuni?";
-      }
-
-      const botMessage = {
-        id: messages.length + 2,
-        text: botResponse,
-        sender: 'bot',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      setMessages(prev => [...prev, botMessage]);
-      
-      // If response type is voice, trigger text-to-speech
-      if (responseType === 'voice') {
-        speakText(botResponse);
-      }
-    }, 2000);
-  };
-
-  const handleVoiceInput = () => {
-    if (!isRecording) {
-      // Start recording simulation
-      setIsRecording(true);
-      
-      // Simulate voice recognition
-      setTimeout(() => {
-        setIsRecording(false);
-        const recognizedText = language === 'english' 
-          ? "I've been feeling stressed about my exams lately." 
-          : "Nimekuwa nikihisi mstari kuhusu mitihani yangu hivi karibuni.";
-        setInputText(recognizedText);
-      }, 3000);
-    } else {
-      // Stop recording
-      setIsRecording(false);
-    }
-  };
-
-  const speakText = (text) => {
-    if ('speechSynthesis' in window) {
-      const speech = new SpeechSynthesisUtterance();
-      speech.text = text;
-      speech.lang = language === 'english' ? 'en-US' : 'sw-TZ';
-      speech.rate = 1;
-      speech.pitch = 1;
-      window.speechSynthesis.speak(speech);
-    }
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        // In a real app, you would send this to your AI
-        console.log('File uploaded:', file.name);
-        alert(`${language === 'english' ? 'File uploaded: ' : 'Faili imepakiwa: '}${file.name}`);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const handleEmergencyCall = (type) => {
-    if (type === 'counseling') {
-      alert(language === 'english' 
-        ? 'Connecting you to university counseling services...' 
-        : 'Tunakuunganisha na huduma za ushauri za chuo kikuu...');
-    } else {
-      alert(language === 'english' 
-        ? 'Connecting you to emergency services...' 
-        : 'Tunakuunganisha na huduma za dharura...');
-    }
-    setEmergencyModal(false);
-  };
+const ChatPage = () => {
+  const {
+    language,
+    messages,
+    inputText,
+    isThinking,
+    isRecording,
+    responseType,
+    emergencyModal,
+    messagesEndRef,
+    setInputText,
+    setResponseType,
+    handleSendMessage,
+    handleVoiceInput,
+    handleFileUpload,
+    handleKeyPress,
+    handleEmergencyCall,
+    openEmergencyModal,
+    closeEmergencyModal,
+  } = useChat();
 
   return (
     <div className="chat-page">
       <Navbar 
-        language={language} 
-        setLanguage={setLanguage} 
-        onEmergencyClick={() => setEmergencyModal(true)}
+        onEmergencyClick={openEmergencyModal}
       />
 
       {/* Emergency Modal */}
       {emergencyModal && (
         <EmergencyModal
-          language={language}
           onEmergencyCall={handleEmergencyCall}
-          onClose={() => setEmergencyModal(false)}
+          onClose={closeEmergencyModal}
         />
       )}
 
@@ -168,8 +46,7 @@ const ChatPage = ({ language, setLanguage }) => {
           {messages.map(message => (
             <Message 
               key={message.id} 
-              message={message} 
-              language={language}
+              message={message}
             />
           ))}
           

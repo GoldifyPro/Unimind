@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Navbar.css';
+import { useLanguage } from '../../context/LanguageContext.jsx';
 
-const Navbar = ({ language, setLanguage, onEmergencyClick }) => {
+const Navbar = ({ onEmergencyClick }) => {
   const navigate = useNavigate();
+  const { language, setLanguage, toggleLanguage } = useLanguage();
 
   const handleLogoClick = () => {
     navigate('/');
@@ -31,7 +33,7 @@ const Navbar = ({ language, setLanguage, onEmergencyClick }) => {
         <div className="navbar-controls">
           {/* Language Toggle */}
           <div className="language-switcher">
-            <button className="lang-switch-btn" onClick={() => setLanguage(language === 'english' ? 'swahili' : 'english')}>
+            <button className="lang-switch-btn" onClick={toggleLanguage}>
               <i className="fas fa-globe"></i>
               <span>{language === 'english' ? 'EN' : 'SW'}</span>
               <i className="fas fa-chevron-down"></i>
