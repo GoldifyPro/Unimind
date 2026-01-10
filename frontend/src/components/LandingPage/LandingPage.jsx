@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import FeatureCard from '../FeatureCard/FeatureCard';
+import FeatureCard from '../FeatureCard/FeatureCard.jsx';
 import './LandingPage.css';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 
@@ -18,19 +18,19 @@ const LandingPage = () => {
           title: "24/7 Support",
           description: "Chat anytime, anywhere",
           icon: "fa-clock",
-          color: "#4361ee"
+          
         },
         {
           title: "Multilingual",
           description: "Support in English & Swahili",
           icon: "fa-language",
-          color: "#4cc9f0"
+        
         },
         {
           title: "Voice Input",
           description: "Speak your thoughts",
           icon: "fa-microphone",
-          color: "#f72585"
+          
         }
       ],
       startButton: "Start Conversation",
@@ -44,19 +44,19 @@ const LandingPage = () => {
           title: "Msaada 24/7",
           description: "Chat wakati wowote, popote",
           icon: "fa-clock",
-          color: "#4361ee"
+          
         },
         {
           title: "Lugha Nyingi",
           description: "Msaada katika Kiingereza na Kiswahili",
           icon: "fa-language",
-          color: "#4cc9f0"
+          
         },
         {
           title: "Ingiza kwa Sauti",
           description: "Toa mawazo yako kwa sauti",
           icon: "fa-microphone",
-          color: "#f72585"
+          
         }
       ],
       startButton: "Anza Mazungumzo",
@@ -114,7 +114,7 @@ const LandingPage = () => {
                 title={card.title}
                 description={card.description}
                 icon={card.icon}
-                color={card.color}
+                // color={card.color}
                 delay={index * 0.2}
               />
             ))}
