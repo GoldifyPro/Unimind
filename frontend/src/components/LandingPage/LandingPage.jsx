@@ -114,7 +114,7 @@ const LandingPage = () => {
                 title={card.title}
                 description={card.description}
                 icon={card.icon}
-                color={card.color}
+                // color={card.color}
                 delay={index * 0.2}
               />
             ))}
