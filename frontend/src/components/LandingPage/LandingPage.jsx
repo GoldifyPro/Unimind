@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import FeatureCard from '../FeatureCard/FeatureCard';
+import FeatureCard from '../FeatureCard/FeatureCard.jsx';
 import './LandingPage.css';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 
