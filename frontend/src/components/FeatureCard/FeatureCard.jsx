@@ -1,18 +1,16 @@
 import React from 'react';
 import './FeatureCard.css';
 
-const FeatureCard = ({ title, description, icon, color, delay }) => {
+const FeatureCard = ({ title, description, icon, delay }) => {
   return (
-    <div 
+    <div
       className="feature-card fade-in"
-      style={{ 
-        animationDelay: `${delay}s`,
-        borderTop: `4px solid ${color}` 
-      }}
+      style={{ animationDelay: `${delay}s` }}
     >
-      <div className="feature-icon" style={{ backgroundColor: `${color}15`, color: color }}>
+      <div className="feature-icon">
         <i className={`fas ${icon}`}></i>
       </div>
+
       <h3 className="feature-title">{title}</h3>
       <p className="feature-description">{description}</p>
     </div>
