@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext.jsx';
+import axios from 'axios';
 
 export function useChat() {
   const { language } = useLanguage();
   const messagesEndRef = useRef(null);
+
+  // Chat state
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [responseType, setResponseType] = useState('text');
-  const [emergencyModal, setEmergencyModal] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
+  // Initial greeting
   useEffect(() => {
     const greeting =
       language === 'english'
@@ -27,12 +30,14 @@ export function useChat() {
     ]);
   }, [language]);
 
+  // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Optional: speech synthesis for voice responses
   const speakText = (text) => {
-    if ('speechSynthesis' in window) {
+    if ('speechSynthesis' in window && responseType === 'voice') {
       const speech = new SpeechSynthesisUtterance();
       speech.text = text;
       speech.lang = language === 'english' ? 'en-US' : 'sw-TZ';
@@ -42,47 +47,50 @@ export function useChat() {
     }
   };
 
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return;
+  // ========== Backend API Integration ==========
+  const sendMessageToAPI = async (text) => {
+    try {
+      setIsThinking(true);
 
-    const userMessage = {
-      id: messages.length + 1,
-      text: inputText,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
+      // Add user message to chat immediately
+      const userMessage = {
+        id: Date.now(),
+        text,
+        sender: 'user',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages(prev => [...prev, userMessage]);
+      setInputText('');
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText('');
-    setIsThinking(true);
+      // Call FastAPI backend
+      const response = await axios.post('http://localhost:8000/chat', { message: text });
 
-    setTimeout(() => {
-      setIsThinking(false);
-
-      let botResponse;
-      if (language === 'english') {
-        botResponse =
-          "Thank you for sharing that with me. It takes courage to open up about your feelings. Let's explore this together. Can you tell me more about what's been on your mind recently?";
-      } else {
-        botResponse =
-          'Asante kwa kunishirikisha hilo. Inahitaji ujasiri kufungua juu ya hisia zako. Hebu tuchunguze hili pamoja. Unaweza kuniambia zaidi juu ya kile kilichokuwa kichwani mwako hivi karibuni?';
-      }
-
+      // Backend returns { reply: "..." }
       const botMessage = {
-        id: messages.length + 2,
-        text: botResponse,
+        id: Date.now() + 1,
+        text: response.data.reply,
         sender: 'bot',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages(prev => [...prev, botMessage]);
+      speakText(response.data.reply);
 
-      if (responseType === 'voice') {
-        speakText(botResponse);
-      }
-    }, 2000);
+      setIsThinking(false);
+    } catch (error) {
+      console.error('API Error:', error);
+      setIsThinking(false);
+    }
   };
 
+
+  // Handler for sending text
+  const handleSendMessage = () => {
+    if (!inputText.trim()) return;
+    sendMessageToAPI(inputText);
+  };
+
+  // Optional: simple voice input simulation
   const handleVoiceInput = () => {
     if (!isRecording) {
       setIsRecording(true);
@@ -91,7 +99,7 @@ export function useChat() {
         const recognizedText =
           language === 'english'
             ? "I've been feeling stressed about my exams lately."
-            : 'Nimekuwa nikihisi mstari kuhusu mitihani yangu hivi karibuni.';
+            : 'Nimekuwa nikihisi msongo kuhusu mitihani yangu hivi karibuni.';
         setInputText(recognizedText);
       }, 3000);
     } else {
@@ -99,44 +107,13 @@ export function useChat() {
     }
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        console.log('File uploaded:', file.name);
-        alert(`${language === 'english' ? 'File uploaded: ' : 'Faili imepakiwa: '}${file.name}`);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
+  // Press Enter to send message
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
-
-  const handleEmergencyCall = (type) => {
-    if (type === 'counseling') {
-      alert(
-        language === 'english'
-          ? 'Connecting you to university counseling services...'
-          : 'Tunakuunganisha na huduma za ushauri za chuo kikuu...'
-      );
-    } else {
-      alert(
-        language === 'english'
-          ? 'Connecting you to emergency services...'
-          : 'Tunakuunganisha na huduma za dharura...'
-      );
-    }
-    setEmergencyModal(false);
-  };
-
-  const openEmergencyModal = () => setEmergencyModal(true);
-  const closeEmergencyModal = () => setEmergencyModal(false);
 
   return {
     language,
@@ -145,17 +122,11 @@ export function useChat() {
     isThinking,
     isRecording,
     responseType,
-    emergencyModal,
     messagesEndRef,
     setInputText,
     setResponseType,
     handleSendMessage,
     handleVoiceInput,
-    handleFileUpload,
     handleKeyPress,
-    handleEmergencyCall,
-    openEmergencyModal,
-    closeEmergencyModal,
   };
 }
-
