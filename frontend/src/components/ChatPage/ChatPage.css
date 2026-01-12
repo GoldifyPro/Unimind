@@ -122,11 +122,23 @@
 
 /* Disclaimer */
 .chat-disclaimer {
-  text-align: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
   font-size: 12px;
   color: #666;
   padding-bottom: 8px;
+  text-align: left;
+  margin-left: -12px; 
 }
+
+.chat-disclaimer i {
+  color: #f5b301;          /* yellow warning color */
+  font-size: 14px;
+  margin-top: 2px;         /* aligns nicely with text */
+}
+
 
 @media (min-width: 1400px) {
   .chat-messages-inner {
