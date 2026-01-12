@@ -60,7 +60,7 @@ const Navbar = ({ onEmergencyClick }) => {
           <button className="btn btn-danger emergency-btn" onClick={onEmergencyClick}>
             <i className="fas fa-phone-alt"></i>
             <span>
-              {language === 'english' ? 'Emergency Call' : 'Simu ya Dharura'}
+              {language === 'english' ? '' : ''}
             </span>
           </button>
         </div>
