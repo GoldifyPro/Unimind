@@ -19,7 +19,7 @@ const ChatPage = () => {
     setResponseType,
     handleSendMessage,
     handleVoiceInput,
-    handleFileUpload,
+    // handleFileUpload,
     handleKeyPress,
     handleEmergencyCall,
     openEmergencyModal,
@@ -67,81 +67,68 @@ const ChatPage = () => {
 
         {/* Chat Input Area */}
         <div className="chat-input-area">
-          <div className="input-controls">
-            {/* File Upload */}
-            <label className="btn-icon btn-secondary file-upload-btn">
-              <i className="fas fa-paperclip"></i>
-              <input 
-                type="file" 
-                accept=".pdf,.doc,.docx,.txt,.jpg,.png"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
-            </label>
-
-            {/* Voice Input */}
-            <button 
-              className={`btn-icon ${isRecording ? 'btn-danger' : 'btn-secondary'}`}
-              onClick={handleVoiceInput}
-            >
-              <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'}`}></i>
-            </button>
-
-            {/* Response Type Toggle */}
-            <div className="response-toggle">
-              <button 
-                className={`toggle-btn ${responseType === 'text' ? 'active' : ''}`}
-                onClick={() => setResponseType('text')}
-                title={language === 'english' ? 'Text Response' : 'Jibu la Maandishi'}
-              >
-                <i className="fas fa-keyboard"></i>
-              </button>
-              <button 
-                className={`toggle-btn ${responseType === 'voice' ? 'active' : ''}`}
-                onClick={() => setResponseType('voice')}
-                title={language === 'english' ? 'Voice Response' : 'Jibu la Sauti'}
-              >
-                <i className="fas fa-volume-up"></i>
-              </button>
-            </div>
-          </div>
 
           {/* Text Input */}
-          <div className="text-input-container">
-            <textarea
-              className="chat-textarea"
-              placeholder={language === 'english' 
-                ? "Type your message here..." 
-                : "Andika ujumbe wako hapa..."}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyPress={handleKeyPress}
-              rows="3"
-            />
-            <button 
-              className="btn btn-primary send-btn"
-              onClick={handleSendMessage}
-              disabled={!inputText.trim()}
-            >
-              <i className="fas fa-paper-plane"></i>
-            </button>
-          </div>
+         {/* Text Input */}
+<div className="text-input-container">
+  {/* Textarea */}
+  <textarea
+    className="chat-textarea"
+    placeholder={language === 'english' 
+      ? "Type your message here..." 
+      : "Andika ujumbe wako hapa..."}
+    value={inputText}
+    onChange={(e) => setInputText(e.target.value)}
+    onKeyPress={handleKeyPress}
+    rows="3"
+  />
 
-          {/* Input Footer */}
-          <div className="input-footer">
-            <div className="recording-indicator" style={{ opacity: isRecording ? 1 : 0 }}>
-              <span className="recording-pulse"></span>
-              <span>{language === 'english' ? 'Listening...' : 'Inasikiliza...'}</span>
-            </div>
-            <div className="response-type-indicator">
-              {language === 'english' ? 'Response type: ' : 'Aina ya majibu: '}
-              <span className="response-type">
-                {responseType === 'text' 
-                  ? (language === 'english' ? 'Text' : 'Maandishi') 
-                  : (language === 'english' ? 'Voice' : 'Sauti')}
-              </span>
-            </div>
-          </div>
+  {/* Right-side controls INSIDE input box */}
+  <div className="input-right-controls">
+    {/* Voice Input */}
+    <button 
+      className={`btn-icon ${isRecording ? 'btn-danger' : 'btn-secondary'}`}
+      onClick={handleVoiceInput}
+      type="button"
+    >
+      <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'}`}></i>
+    </button>
+
+    {/* Response Type Toggle */}
+    <div className="response-toggle">
+      <button 
+        className={`toggle-btn ${responseType === 'text' ? 'active' : ''}`}
+        onClick={() => setResponseType('text')}
+        type="button"
+        title={language === 'english' ? 'Text Response' : 'Jibu la Maandishi'}
+      >
+        <i className="fas fa-keyboard"></i>
+      </button>
+
+      <button 
+        className={`toggle-btn ${responseType === 'voice' ? 'active' : ''}`}
+        onClick={() => setResponseType('voice')}
+        type="button"
+        title={language === 'english' ? 'Voice Response' : 'Jibu la Sauti'}
+      >
+        <i className="fas fa-volume-up"></i>
+      </button>
+    </div>
+
+    {/* Send Button */}
+    <button 
+      className="btn btn-primary send-btn"
+      onClick={handleSendMessage}
+      disabled={!inputText.trim()}
+      type="button"
+    >
+      <i className="fas fa-paper-plane"></i>
+    </button>
+  </div>
+</div>
+
+
+      
 
           {/* Chat Disclaimer */}
           <div className="chat-disclaimer">
