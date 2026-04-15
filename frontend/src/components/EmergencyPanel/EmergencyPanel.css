@@ -1,0 +1,184 @@
+/* components/EmergencyPanel/EmergencyPanel.css */
+.emergency-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+
+.emergency-panel {
+  width: 90%;
+  max-width: 500px;
+  padding: 32px;
+  position: relative;
+  background: rgba(239, 68, 68, 0.2);
+  border-left: 4px solid #ef4444;
+  animation: slideUp 0.3s ease;
+}
+
+.emergency-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+}
+
+.emergency-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.emergency-icon {
+  width: 60px;
+  height: 60px;
+  background: #ef4444;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  animation: pulse 1s infinite;
+}
+
+.emergency-icon i {
+  font-size: 28px;
+  color: white;
+}
+
+.emergency-header h2 {
+  color: white;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.emergency-header p {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.emergency-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.emergency-contact-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: left;
+}
+
+.emergency-contact-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(5px);
+}
+
+.contact-icon {
+  width: 40px;
+  height: 40px;
+  background: #ef4444;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.contact-info {
+  flex: 1;
+}
+
+.contact-info strong {
+  color: white;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.contact-info small {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+.contact-number {
+  display: block;
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+.call-arrow {
+  color: white;
+  opacity: 0.6;
+}
+
+.emergency-tips {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.emergency-tips p {
+  color: white;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.emergency-tips p i {
+  color: #fbbf24;
+}
+
+.emergency-tips ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.emergency-tips li {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}

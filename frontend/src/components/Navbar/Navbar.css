@@ -1,183 +1,216 @@
-.navbar {
-  background: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 15px 0;
+/* components/Navbar/Navbar.css */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  margin: 16px 24px;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
 }
 
-.navbar-container {
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.navbar-brand {
+.nav-brand {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
   cursor: pointer;
-  transition: var(--transition);
 }
 
-.navbar-brand:hover {
-  opacity: 0.9;
-}
-
-.navbar-logo {
-  width: 50px;
-  height: 50px;
+.brand-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow);
-}
-
-.navbar-logo i {
-  font-size: 24px;
+  font-size: 20px;
   color: white;
 }
 
-.navbar-title h1 {
+.brand-name {
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  background: linear-gradient(135deg, #fff, #e0d4ff);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0;
-  line-height: 1;
+  background-clip: text;
+  color: transparent;
 }
 
-.navbar-subtitle {
-  font-size: 13px;
-  color: var(--gray);
-  margin: 5px 0 0 0;
-  font-weight: 500;
-}
-
-.navbar-controls {
+.nav-links {
   display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.language-switcher {
-  position: relative;
-}
-
-.lang-switch-btn {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  background: var(--gray-light);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  color: var(--dark);
-  cursor: pointer;
-  transition: var(--transition);
 }
 
-.lang-switch-btn:hover {
-  background: #d1d5db;
-}
-
-.language-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 10px;
-  background: white;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  min-width: 150px;
-  display: none;
-  z-index: 10;
-}
-
-.language-switcher:hover .language-dropdown {
-  display: block;
-  animation: fadeIn 0.3s ease;
-}
-
-.dropdown-item {
-  padding: 12px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  transition: var(--transition);
-  border-bottom: 1px solid var(--gray-light);
-}
-
-.dropdown-item:last-child {
-  border-bottom: none;
-}
-
-.dropdown-item:hover {
-  background: var(--gray-light);
-}
-
-.dropdown-item.active {
-  color: var(--primary);
-  font-weight: 600;
-}
-
-.dropdown-item.active i {
-  display: block;
-}
-
-.dropdown-item i {
-  display: none;
-  color: var(--primary);
-}
-
-.emergency-btn {
+.nav-link {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  border-radius: var(--radius);
-  font-weight: 600;
+  color: white;
+  text-decoration: none;
+  border-radius: 40px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.nav-link i {
+  font-size: 16px;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.nav-link.active {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lang-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 30px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s;
+}
+
+.lang-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.emergency-nav-btn {
+  background: rgba(239, 68, 68, 0.8);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
   animation: pulse 2s infinite;
 }
 
+.emergency-nav-btn:hover {
+  background: #ef4444;
+  transform: scale(1.05);
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 16px 6px 12px;
+  border-radius: 40px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+}
+
+.user-name {
+  color: white;
+  font-weight: 500;
+}
+
+.logout-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.auth-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  padding: 8px 20px;
+  border-radius: 30px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.auth-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
 @media (max-width: 768px) {
-  .navbar-container {
-    padding: 0 15px;
+  .glass-nav {
+    margin: 12px;
+    padding: 10px 16px;
     flex-wrap: wrap;
   }
   
-  .navbar-controls {
-    width: 100%;
-    justify-content: space-between;
-    margin-top: 15px;
+  .nav-links {
     order: 3;
-  }
-  
-  .navbar-brand {
     width: 100%;
     justify-content: center;
-    margin-bottom: 10px;
+    margin-top: 12px;
   }
   
-  .emergency-btn span {
+  .nav-link span {
     display: none;
   }
   
-  .emergency-btn {
-    padding: 10px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    justify-content: center;
+  .nav-link i {
+    font-size: 20px;
+  }
+  
+  .brand-name {
+    font-size: 20px;
+  }
+  
+  .auth-btn span {
+    display: none;
+  }
+  
+  .auth-btn {
+    padding: 8px 12px;
   }
 }
