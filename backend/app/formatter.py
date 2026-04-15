@@ -2,9 +2,10 @@ import re
 
 def split_into_sections(text: str) -> list[dict]:
     text = text.strip()
-    text = re.sub(r'\*{1,3}(.+?)\*{1,3}', r'\1', text)
-    text = re.sub(r'#{1,6}\s*', '', text)
-    text = re.sub(r'^\s*[-•]\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\*{1,3}(.+?)\*{1,3}', r'\1', text)  # remove bold/italic markers
+    text = re.sub(r'#{1,6}\s*', '', text)                 # remove markdown headers
+    text = re.sub(r'^\s*\*\s+', '', text, flags=re.MULTILINE)  # FIX: strip "* item" bullets
+    text = re.sub(r'^\s*[-•]\s+', '', text, flags=re.MULTILINE) # strip "- item" and "• item" bullets
     text = re.sub(r':\s*\n', '\n', text)
 
     lines = [l.strip() for l in text.splitlines() if l.strip()]

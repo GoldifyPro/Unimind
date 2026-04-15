@@ -1,40 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime
-from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from datetime import datetime
+import uuid
+
 from app.ollama_client import get_model_response
 from app.safety import check_crisis
 from app.prompts import SYSTEM_PROMPT
 from app.formatter import format_response
+from app.resources import get_resources
+from app.database import Conversation, Message, SessionLocal, init_db
 
-# -----------------------------
-# DATABASE SETUP (SQLite)
-# -----------------------------
-DATABASE_URL = "sqlite:///./chat.db"
-
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-class Conversation(Base):
-    __tablename__ = "conversations"
-    conversation_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    messages = relationship("Message", back_populates="conversation")
-
-class Message(Base):
-    __tablename__ = "messages"
-    message_id = Column(Integer, primary_key=True, index=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.conversation_id"))
-    role = Column(String)  # 'user' or 'assistant'
-    content = Column(Text)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    conversation = relationship("Conversation", back_populates="messages")
-
-Base.metadata.create_all(bind=engine)
 
 # -----------------------------
 # FASTAPI SETUP
@@ -49,19 +25,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize DB on startup
+init_db()
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-class ChatRequest(BaseModel):
-    message: str
-    html: bool = False   # set to True to get HTML-formatted reply
-    user_id: str         # added user_id for tracking memory
 
 # -----------------------------
-# HELPER FUNCTIONS
+# Pydantic schema
 # -----------------------------
-def get_last_messages(db, conversation_id: int, limit: int = 10):
+class ChatRequest(BaseModel):
+    message: str
+    html: bool = False
+    user_id: str = None
+    conversation_id: int = None  # optional: resume a specific conversation
+
+
+# -----------------------------
+# Helper: fetch last N messages
+# -----------------------------
+def get_last_messages(db, conversation_id: int, limit: int = 30):
     msgs = (
         db.query(Message)
         .filter(Message.conversation_id == conversation_id)
@@ -71,71 +56,126 @@ def get_last_messages(db, conversation_id: int, limit: int = 10):
     )
     return msgs[::-1]  # oldest first
 
+
 # -----------------------------
-# CHAT ENDPOINT
+# Chat endpoint
 # -----------------------------
 @app.post("/chat")
 def chat(req: ChatRequest):
     db = SessionLocal()
 
-    # Check crisis first
+    # Generate a stable user_id if missing (frontend should store and re-send this)
+    if not req.user_id:
+        req.user_id = str(uuid.uuid4())
+
+    # --- Crisis check — must happen before anything else ---
     if check_crisis(req.message):
         crisis_text = (
-            "I'm really sorry you're feeling this way.\n\n"
-            "Please reach out to a trusted friend, family member, or campus counselor.\n\n"
-            "Your safety matters."
+            "What you're carrying right now sounds incredibly heavy — "
+            "not having enough to eat, feeling the weight of everything at once. "
+            "That's a lot for one person to hold.\n\n"
+            "Please know that you matter, and this moment is not the end of your story.\n\n"
+            "Please reach out to someone who can help right now:\n"
+            "- A trusted friend, family member, or lecturer\n"
+            "- Your university's counseling or student support services\n"
+            "- A crisis helpline in your area\n\n"
+            "You don't have to face this alone. "
+            "Is there one person you can call or go to right now?"
         )
         return {
             "reply": crisis_text,
             "html": False,
-            "crisis": True
+            "crisis": True,
+            "user_id": req.user_id,
+            "conversation_id": None
         }
 
-    # Get or create conversation for this user
-    conversation = (
-        db.query(Conversation)
-        .filter(Conversation.user_id == req.user_id)
-        .order_by(Conversation.created_at.desc())
-        .first()
-    )
+    # --- Get or create conversation ---
+    conversation = None
+
+    # If frontend passed a specific conversation_id, try to resume it
+    if req.conversation_id:
+        conversation = (
+            db.query(Conversation)
+            .filter(
+                Conversation.conversation_id == req.conversation_id,
+                Conversation.user_id == req.user_id
+            )
+            .first()
+        )
+
+    # Otherwise find the most recent conversation for this user
+    if not conversation:
+        conversation = (
+            db.query(Conversation)
+            .filter(Conversation.user_id == req.user_id)
+            .order_by(Conversation.created_at.desc())
+            .first()
+        )
+
+    # If still no conversation, create one
     if not conversation:
         conversation = Conversation(user_id=req.user_id)
         db.add(conversation)
         db.commit()
         db.refresh(conversation)
 
-    # Save user message
+    # Capture as plain int immediately — avoids DetachedInstanceError later
+    conversation_id = conversation.conversation_id
+
+    # --- Save user message FIRST ---
+    # This ensures get_last_messages includes it naturally with no duplication
     user_msg = Message(
-        conversation_id=conversation.conversation_id,
+        conversation_id=conversation_id,
         role="user",
         content=req.message
     )
     db.add(user_msg)
     db.commit()
 
-    # Fetch last N messages for context
-    last_msgs = get_last_messages(db, conversation.conversation_id, limit=10)
-    prompt_context = ""
-    for m in last_msgs:
-        role_prefix = "User: " if m.role == "user" else "Bot: "
-        prompt_context += f"{role_prefix}{m.content}\n"
+    # --- Build history AFTER saving (includes the new message) ---
+    last_msgs = get_last_messages(db, conversation_id, limit=30)
+    history = [
+        {"role": m.role, "content": m.content}
+        for m in last_msgs
+    ]
 
-    # Call your LLaMA model (via existing get_model_response)
-    # Here, we send full context, not just current message
-    raw_response = get_model_response(prompt_context)
+    # --- Call model with full history (returns raw, unformatted text) ---
+    raw_response = get_model_response(history)
 
-    # Save bot response
+    # --- Save raw response to DB (important: save raw, not formatted) ---
     bot_msg = Message(
-        conversation_id=conversation.conversation_id,
+        conversation_id=conversation_id,
         role="assistant",
         content=raw_response
     )
     db.add(bot_msg)
     db.commit()
+
+    # --- Fetch relevant resources based on user message ---
+    resources = get_resources(req.message)
+
+    # --- Format response only for output, not for storage ---
+    formatted_reply = format_response(raw_response)
+
+    # Append resources to reply if any were found
+    if resources:
+        resource_lines = "\n\nHere are some resources that might help:"
+        for r in resources:
+            resource_lines += f"\n- {r.get('name', '')}: {r.get('contact', r.get('url', ''))}"
+        formatted_reply += resource_lines
+
     db.close()
 
+    print("User ID:", req.user_id)
+    print("Conversation ID:", conversation_id)
+    print("History length:", len(history))
+
     return {
-        "reply": raw_response,
+        "reply": formatted_reply,
         "html": req.html,
-        "crisis": False
+        "crisis": False,
+        "user_id": req.user_id,
+        "conversation_id": conversation_id
     }
+
