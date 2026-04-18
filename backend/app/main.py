@@ -1,181 +1,254 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from datetime import datetime
 import uuid
+from datetime import datetime
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
-from Unimind.backend.app.core.ollama_client import get_model_response
-from app.safety import check_crisis
-from Unimind.backend.app.core.prompts import SYSTEM_PROMPT
-from Unimind.backend.app.core.formatter import format_response
-from app.resources import get_resources
-from Unimind.backend.app.data.database import Conversation, Message, SessionLocal, init_db
+from database import init_db, get_db
+from auth import (
+    get_current_user,
+    create_guest_session,
+    register_user,
+    login_user
+)
+from models import (
+    RegisterRequest, LoginRequest,
+    MoodCheckinRequest,
+    ChatMessageRequest,
+    BreathingSessionRequest
+)
+from Unimind.backend.app.core.safety import check_crisis, get_crisis_response
+from ollama_client import get_ai_response, check_ollama_health
+import resources as resources_module
 
-
-# -----------------------------
-# FASTAPI SETUP
-# -----------------------------
-app = FastAPI(title="UniMind Chat API")
+# ─── App setup ───────────────────────────────────────────
+app = FastAPI(title="Unimind API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict in production
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],  # Vite dev ports
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize DB on startup
-init_db()
+app.include_router(resources_module.router)
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+@app.on_event("startup")
+def startup():
+    init_db()
+    print("🚀 Unimind backend started")
 
-
-# -----------------------------
-# Pydantic schema
-# -----------------------------
-class ChatRequest(BaseModel):
-    message: str
-    html: bool = False
-    user_id: str = None
-    conversation_id: int = None  # optional: resume a specific conversation
-
-
-# -----------------------------
-# Helper: fetch last N messages
-# -----------------------------
-def get_last_messages(db, conversation_id: int, limit: int = 30):
-    msgs = (
-        db.query(Message)
-        .filter(Message.conversation_id == conversation_id)
-        .order_by(Message.timestamp.desc())
-        .limit(limit)
-        .all()
-    )
-    return msgs[::-1]  # oldest first
-
-
-# -----------------------------
-# Chat endpoint
-# -----------------------------
-@app.post("/chat")
-def chat(req: ChatRequest):
-    db = SessionLocal()
-
-    # Generate a stable user_id if missing (frontend should store and re-send this)
-    if not req.user_id:
-        req.user_id = str(uuid.uuid4())
-
-    # --- Crisis check — must happen before anything else ---
-    if check_crisis(req.message):
-        crisis_text = (
-            "What you're carrying right now sounds incredibly heavy — "
-            "not having enough to eat, feeling the weight of everything at once. "
-            "That's a lot for one person to hold.\n\n"
-            "Please know that you matter, and this moment is not the end of your story.\n\n"
-            "Please reach out to someone who can help right now:\n"
-            "- A trusted friend, family member, or lecturer\n"
-            "- Your university's counseling or student support services\n"
-            "- A crisis helpline in your area\n\n"
-            "You don't have to face this alone. "
-            "Is there one person you can call or go to right now?"
-        )
-        return {
-            "reply": crisis_text,
-            "html": False,
-            "crisis": True,
-            "user_id": req.user_id,
-            "conversation_id": None
-        }
-
-    # --- Get or create conversation ---
-    conversation = None
-
-    # If frontend passed a specific conversation_id, try to resume it
-    if req.conversation_id:
-        conversation = (
-            db.query(Conversation)
-            .filter(
-                Conversation.conversation_id == req.conversation_id,
-                Conversation.user_id == req.user_id
-            )
-            .first()
-        )
-
-    # Otherwise find the most recent conversation for this user
-    if not conversation:
-        conversation = (
-            db.query(Conversation)
-            .filter(Conversation.user_id == req.user_id)
-            .order_by(Conversation.created_at.desc())
-            .first()
-        )
-
-    # If still no conversation, create one
-    if not conversation:
-        conversation = Conversation(user_id=req.user_id)
-        db.add(conversation)
-        db.commit()
-        db.refresh(conversation)
-
-    # Capture as plain int immediately — avoids DetachedInstanceError later
-    conversation_id = conversation.conversation_id
-
-    # --- Save user message FIRST ---
-    # This ensures get_last_messages includes it naturally with no duplication
-    user_msg = Message(
-        conversation_id=conversation_id,
-        role="user",
-        content=req.message
-    )
-    db.add(user_msg)
-    db.commit()
-
-    # --- Build history AFTER saving (includes the new message) ---
-    last_msgs = get_last_messages(db, conversation_id, limit=30)
-    history = [
-        {"role": m.role, "content": m.content}
-        for m in last_msgs
-    ]
-
-    # --- Call model with full history (returns raw, unformatted text) ---
-    raw_response = get_model_response(history)
-
-    # --- Save raw response to DB (important: save raw, not formatted) ---
-    bot_msg = Message(
-        conversation_id=conversation_id,
-        role="assistant",
-        content=raw_response
-    )
-    db.add(bot_msg)
-    db.commit()
-
-    # --- Fetch relevant resources based on user message ---
-    resources = get_resources(req.message)
-
-    # --- Format response only for output, not for storage ---
-    formatted_reply = format_response(raw_response)
-
-    # Append resources to reply if any were found
-    if resources:
-        resource_lines = "\n\nHere are some resources that might help:"
-        for r in resources:
-            resource_lines += f"\n- {r.get('name', '')}: {r.get('contact', r.get('url', ''))}"
-        formatted_reply += resource_lines
-
-    db.close()
-
-    print("User ID:", req.user_id)
-    print("Conversation ID:", conversation_id)
-    print("History length:", len(history))
-
+# ─── Health ──────────────────────────────────────────────
+@app.get("/api/health")
+async def health():
+    ollama_ok = await check_ollama_health()
     return {
-        "reply": formatted_reply,
-        "html": req.html,
-        "crisis": False,
-        "user_id": req.user_id,
-        "conversation_id": conversation_id
+        "status": "ok",
+        "ollama": "connected" if ollama_ok else "disconnected"
     }
 
+# ─── Auth routes ─────────────────────────────────────────
+@app.post("/api/auth/guest")
+def guest_login():
+    """Create an anonymous guest session."""
+    return create_guest_session()
+
+@app.post("/api/auth/register")
+def register(body: RegisterRequest):
+    return register_user(body.email, body.password)
+
+@app.post("/api/auth/login")
+def login(body: LoginRequest):
+    return login_user(body.email, body.password)
+
+# ─── Mood routes ─────────────────────────────────────────
+@app.post("/api/mood")
+def log_mood(body: MoodCheckinRequest, user=Depends(get_current_user)):
+    valid_moods = ["great", "good", "okay", "low", "struggling"]
+    if body.mood.lower() not in valid_moods:
+        raise HTTPException(status_code=400, detail=f"Mood must be one of: {valid_moods}")
+
+    conn = get_db()
+    cursor = conn.execute(
+        "INSERT INTO mood_checkins (user_id, mood, note) VALUES (?, ?, ?)",
+        (user["user_id"], body.mood.lower(), body.note)
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT * FROM mood_checkins WHERE id = ?", (cursor.lastrowid,)
+    ).fetchone()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "mood": row["mood"],
+        "note": row["note"],
+        "created_at": row["created_at"]
+    }
+
+@app.get("/api/mood/history")
+def get_mood_history(user=Depends(get_current_user)):
+    if user["is_guest"]:
+        return {"moods": [], "message": "Mood history is not saved for guests"}
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM mood_checkins WHERE user_id = ? ORDER BY created_at DESC LIMIT 30",
+        (user["user_id"],)
+    ).fetchall()
+    conn.close()
+
+    return {"moods": [dict(r) for r in rows]}
+
+# ─── Chat routes ─────────────────────────────────────────
+@app.post("/api/chat")
+async def chat(body: ChatMessageRequest, user=Depends(get_current_user)):
+    conn = get_db()
+
+    # Create or get conversation
+    if body.conversation_id:
+        convo = conn.execute(
+            "SELECT * FROM conversations WHERE conversation_id = ? AND user_id = ?",
+            (body.conversation_id, user["user_id"])
+        ).fetchone()
+        if not convo:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        conversation_id = body.conversation_id
+    else:
+        conversation_id = str(uuid.uuid4())
+        conn.execute(
+            "INSERT INTO conversations (conversation_id, user_id) VALUES (?, ?)",
+            (conversation_id, user["user_id"])
+        )
+        conn.commit()
+
+    # Check for crisis BEFORE saving or calling AI
+    is_crisis = check_crisis(body.message, user["user_id"])
+    if is_crisis:
+        conn.close()
+        crisis_data = get_crisis_response()
+        return {
+            "conversation_id": conversation_id,
+            "message_id": str(uuid.uuid4()),
+            "role": "assistant",
+            "content": crisis_data["message"],
+            "created_at": datetime.utcnow().isoformat(),
+            "is_crisis": True,
+            "crisis_resources": crisis_data["resources"]
+        }
+
+    # Save user message
+    user_msg_id = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO messages (message_id, conversation_id, role, content) VALUES (?, ?, 'user', ?)",
+        (user_msg_id, conversation_id, body.message)
+    )
+    conn.commit()
+
+    # Get conversation history for context
+    history_rows = conn.execute(
+        "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at ASC",
+        (conversation_id,)
+    ).fetchall()
+    history = [{"role": r["role"], "content": r["content"]} for r in history_rows]
+
+    # Get AI response
+    ai_reply = await get_ai_response(body.message, history[:-1])  # exclude the just-saved msg
+
+    # Save assistant message
+    assistant_msg_id = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO messages (message_id, conversation_id, role, content) VALUES (?, ?, 'assistant', ?)",
+        (assistant_msg_id, conversation_id, ai_reply)
+    )
+    conn.commit()
+    conn.close()
+
+    return {
+        "conversation_id": conversation_id,
+        "message_id": assistant_msg_id,
+        "role": "assistant",
+        "content": ai_reply,
+        "created_at": datetime.utcnow().isoformat(),
+        "is_crisis": False
+    }
+
+@app.get("/api/chat/history/{conversation_id}")
+def get_chat_history(conversation_id: str, user=Depends(get_current_user)):
+    conn = get_db()
+
+    convo = conn.execute(
+        "SELECT * FROM conversations WHERE conversation_id = ? AND user_id = ?",
+        (conversation_id, user["user_id"])
+    ).fetchone()
+    if not convo:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    messages = conn.execute(
+        "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC",
+        (conversation_id,)
+    ).fetchall()
+    conn.close()
+
+    return {
+        "conversation_id": conversation_id,
+        "messages": [dict(m) for m in messages]
+    }
+
+@app.get("/api/chat/conversations")
+def get_conversations(user=Depends(get_current_user)):
+    if user["is_guest"]:
+        return {"conversations": []}
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM conversations WHERE user_id = ? ORDER BY created_at DESC",
+        (user["user_id"],)
+    ).fetchall()
+    conn.close()
+    return {"conversations": [dict(r) for r in rows]}
+
+# ─── Breathing routes ────────────────────────────────────
+@app.post("/api/breathe/session")
+def log_breathing(body: BreathingSessionRequest, user=Depends(get_current_user)):
+    conn = get_db()
+    cursor = conn.execute(
+        """INSERT INTO breathing_sessions (user_id, technique, cycles_completed, duration_seconds)
+           VALUES (?, ?, ?, ?)""",
+        (user["user_id"], body.technique, body.cycles_completed, body.duration_seconds)
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT * FROM breathing_sessions WHERE id = ?", (cursor.lastrowid,)
+    ).fetchone()
+    conn.close()
+
+    return dict(row)
+
+@app.get("/api/breathe/history")
+def get_breathing_history(user=Depends(get_current_user)):
+    if user["is_guest"]:
+        return {"sessions": []}
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM breathing_sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 20",
+        (user["user_id"],)
+    ).fetchall()
+    conn.close()
+    return {"sessions": [dict(r) for r in rows]}
+
+# ─── SOS route ───────────────────────────────────────────
+@app.get("/api/sos")
+def get_sos_resources():
+    """Always-available emergency resources — no auth required."""
+    return {
+        "message": "You are not alone. Help is available right now.",
+        "resources": [
+            {"name": "National Suicide Prevention Lifeline", "phone": "988", "available": "24/7"},
+            {"name": "Crisis Text Line", "instruction": "Text HOME to 741741", "available": "24/7"},
+            {"name": "Emergency Services", "phone": "911", "available": "24/7"},
+        ]
+    }
