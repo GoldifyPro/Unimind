@@ -1,5 +1,5 @@
 import requests
-from app.prompts import SYSTEM_PROMPT
+from Unimind.backend.app.core.prompts import SYSTEM_PROMPT
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "llama3.2"

@@ -4,12 +4,12 @@ from pydantic import BaseModel
 from datetime import datetime
 import uuid
 
-from app.ollama_client import get_model_response
+from Unimind.backend.app.core.ollama_client import get_model_response
 from app.safety import check_crisis
-from app.prompts import SYSTEM_PROMPT
-from app.formatter import format_response
+from Unimind.backend.app.core.prompts import SYSTEM_PROMPT
+from Unimind.backend.app.core.formatter import format_response
 from app.resources import get_resources
-from app.database import Conversation, Message, SessionLocal, init_db
+from Unimind.backend.app.data.database import Conversation, Message, SessionLocal, init_db
 
 
 # -----------------------------
